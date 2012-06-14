@@ -1,0 +1,231 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="gbk">
+    <title>测试用的iframe</title>
+    <link rel="stylesheet" type="text/css" href="../lib/jasmine.css">
+    <script src="../lib/kissy-aio.js"></script>
+    <script src="../lib/jasmine.js"></script>
+    <script src="../lib/jasmine-html.js"></script>
+    <script src="../lib/event-simulate.js"></script>
+    <script src="../lib/matcher.js"></script>
+    <script type="text/javascript" src="../lib/postmsg.js"></script>
+    <script type="text/javascript" src="../lib/customReporter.js"></script>
+</head>
+<body>
+<style>
+    .default{
+        color:yellow;
+        line-height: 15px;
+        background-color: red;
+        border-color: black;
+        border-width: 1px;
+        border-style: solid;
+    }
+    .red{
+        color:red;
+    }
+
+    .blue{
+        color:blue;
+    }
+    .hide {
+        display: none;
+    }
+
+    .offElement {
+        position: absolute;
+        top:20px;
+        left:20px;
+    }
+
+    .jasmine_reporter {
+        display: none;
+    }
+
+
+</style>
+<a id="target" class="default">test</a>
+
+<div class="hide">abce</div>
+<div class="a">
+    <div class="b">
+
+    </div>
+    <div class="b">
+
+    </div>
+    <div class="b">
+
+    </div>
+</div>
+
+
+
+<input class="check" type="checkbox" checked />
+
+<div class="list"><ul>
+    <li>1</li><li>2</li><li>3</li></ul>
+</div>
+<div class="offElement">测试元素位置</div>
+<input type="text" class="textInput" />
+
+<ul class="willAdd"></ul>
+<ul class="willRemove"><li>1</li><li>2</li><li>3</li></ul>
+<div class="hidden-result"></div>
+<script>
+    //功能
+    (function () {
+
+        var $ = KISSY.all;
+        var el = $("#target");
+        var textEl = $('.textInput') ;
+        el.on("click", function () {
+            setTimeout(function () {
+                el.addClass("red");
+                el.removeClass('red');
+                el.addClass("blue");
+                textEl[0].focus();
+            }, 100);
+        })
+
+
+    })();
+</script>
+<!-- test-->
+<script>
+
+
+    describe("测试ui变化", function () {
+        var DOM = KISSY.DOM;
+        var el = DOM.get("#target");
+        var hiddenEl = DOM.get('.hide');
+        var checkBox = DOM.get('.check');
+        var listEl = DOM.get('.list');
+        var textInput = DOM.get('.textInput');
+        var offEle = DOM.get('.offElement');
+        it("id为target的元素有一个名为default的className", function () {
+            expect(el).toHaveClass("defaultx");
+
+            expect(hiddenEl).toBeHidden();
+            expect(checkBox).toBeChecked();
+            expect(listEl).toHaveSameSubTree('<ul><li>1</li><li>2</li><li>3</li></ul>');
+            expect(el).toHaveComputedStyle("color",'yellow');
+            expect(el).toHaveComputedStyle("lineHeight",'15px');
+            expect(el).toHaveComputedStyle("backGroundColor",'red');
+            expect(el).toHaveComputedStyle("borderColor",'black');
+
+            expect(offEle).atPosition(20,20);
+
+        });
+
+        it("id为target的元素点击后增加名为red的className", function () {
+            simulate(el, 'click');
+            waitsMatchers(function () {
+          /*      expect(el).toHaveClass("red");*/
+                expect(el).toHaveClass("blue");
+                expect(el).toBeVisible();
+                expect(textInput).toBeFocused();
+
+            }, 100);
+
+
+        });
+
+        it("测试willAddChild",function(){
+            var el = DOM.get('.willAdd');
+            var evalute = expect('.willAdd').willAddChild('li',2);
+            el.innerHTML = '<li>1</li><li>2</li><a>3</a>';
+
+            waitsMatchers(function () {
+//
+                evalute.verify();
+            }, 200);
+
+
+        });
+
+        it("测试willRemoveChild",function(){
+            var el = DOM.get('.willRemove');
+            var evalute = expect('.willRemove').willRemoveChild('li',2);
+            el.innerHTML = '<li>4</li>';
+
+            waitsMatchers(function () {
+//
+                evalute.verify();
+            }, 200);
+
+
+        });
+
+
+
+
+    });
+
+
+</script>
+
+<script>
+
+    (function () {
+        var jasmineEnv = jasmine.getEnv();
+        jasmineEnv.updateInterval = 1000;
+
+       //  var htmlReporter = new jasmine.HtmlReporter();
+        // 自定义的reporter
+        /*
+        *  reporter 需要实现如下接口:
+        *
+        * */
+
+
+        var htmlReporter =  new  jasmine.HtmlReporter();
+        //KISSY.mix(customReporter,htmlReporter) ;
+      //  jasmineEnv.addReporter(htmlReporter);
+        jasmineEnv.addReporter(htmlReporter);
+
+       /* jasmineEnv.specFilter = function (spec) {
+            return htmlReporter.specFilter(spec);
+        };*/
+
+        var currentWindowOnload = window.onload;
+
+        window.onload = function () {
+            if (currentWindowOnload) {
+                currentWindowOnload();
+            }
+            execJasmine();
+        };
+
+        function execJasmine() {
+            jasmineEnv.execute();
+
+        }
+
+    })();
+
+
+    //测试
+
+</script>
+
+<script type="text/javascript">
+    window.postmsg.bind(function(data,evt){
+       // 接收来自父层的json数据
+
+    });
+    // 向父窗口发送消息
+    /**
+     * msg {
+     *     head: start/end/result
+     *     body:''/result_innerHTML
+     *
+     * }
+     * */
+   // window.postmsg.send({target:window.parent,msg:{"head":'start'}});
+    //window.postmsg.send({target:window.parent,msg:{"head":'end'}});
+   // window.postmsg.send({target:window.parent,msg:{"head":'result',"data":''}});
+</script>
+</body>
+</html>

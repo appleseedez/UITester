@@ -2,94 +2,185 @@
 <html>
 <head>
     <meta charset="gbk">
+
     <title></title>
     <link rel="stylesheet" type="text/css" href="../lib/jasmine.css">
-    <script src="../lib/kissy.js"></script>
-    <script src="../lib/jasmine.js"></script>
-    <script src="../lib/jasmine-html.js"></script>
-    <script src="../lib/event-simulate.js"></script>
-    <script src="../lib/matcher.js"></script>
+    <script src="../lib/kissy-aio.js"></script>
+    <script type="text/javascript" src="../lib/postmsg.js"></script>
+    <script type="text/javascript" src="../lib/juicer-min.js"></script>
 
-</head>
-<body>
-<style>
-    .red{
-        color:red;
-    }
-
-</style>
-<a id="target" class="default">test</a>
-<script>
-    //功能
-    (function () {
-        var $ = KISSY.all;
-        var el = $("#target");
-        el.on("click", function () {
-            setTimeout(function () {
-                el.addClass("red")
-                el.addClass("blue")
-            }, 100);
-        })
-
-
-    })();
-</script>
-<!-- test-->
-<script>
-    describe("测试ui变化", function () {
-        var DOM = KISSY.DOM;
-        var el = DOM.get("#target");
-        it("id为target的元素有一个名为default的className", function () {
-                expect(el).hasClass("default")
-        })
-
-        it("id为target的元素点击后增加名为red的className", function () {
-            simulate(el, 'click');
-            waitsMatchers(function () {
-                expect(el).hasClass("red")
-                expect(el).hasClass("blue")
-            }, 200);
-
-
-        })
-
-
-    });
-
-</script>
-
-<script>
-
-    (function () {
-        var jasmineEnv = jasmine.getEnv();
-        jasmineEnv.updateInterval = 1000;
-
-        var htmlReporter = new jasmine.HtmlReporter();
-
-        jasmineEnv.addReporter(htmlReporter);
-
-        jasmineEnv.specFilter = function (spec) {
-            return htmlReporter.specFilter(spec);
-        };
-
-        var currentWindowOnload = window.onload;
-
-        window.onload = function () {
-            if (currentWindowOnload) {
-                currentWindowOnload();
-            }
-            execJasmine();
-        };
-
-        function execJasmine() {
-            jasmineEnv.execute();
+    <style>
+        .default{
+            color:yellow;
+            line-height: 15px;
+            background-color: red;
+            border-color: black;
+            border-width: 1px;
+            border-style: solid;
+        }
+        .red{
+            color:red;
         }
 
-    })();
+        .blue{
+            color:blue;
+        }
+        .hide {
+            display: none;
+        }
+
+        .offElement {
+            position: absolute;
+            top:20px;
+            left:20px;
+        }
 
 
-    //测试
 
+    </style>
+</head>
+<body>
+<iframe src="testFrame.html?" name="testFrame" id="testFrame" frameborder="0" style="height: 800px;width: 100%"></iframe>
+<!--<div id="HTMLReporter" class="resultPage jasmine_reporter">
+
+</div>-->
+
+<div class="J_TestReporter result-report">
+
+</div>
+
+
+
+<script type="text/javascript">
+
+    var S  = KISSY,
+        DOM = KISSY.DOM,
+        Event = KISSY.Event;
+    window.postmsg.bind(function(data,evt){
+        switch (data.head){
+            case 'start':handleStart();
+                break;
+            case 'end':handleEnd();
+                break;
+            case 'result':handleResult(data.body);
+                break;
+            case 'resultJSON':handleJSONResult(data.body);
+            default :break;
+
+        }
+
+    });
+    // 测试开始了
+    function handleStart(){
+
+    }
+    // 测试结束了
+    function handleEnd(){
+
+    }
+    // 每条测试的结果.从iframe页面发过来的
+    function handleResult(html){
+      /*   // 将测试的结果html添加到相应的节点中
+        var resultNode = DOM.get('.resultPage');
+        Event.on(resultNode,'click',function(evt){
+            var t = evt.target;
+            if(DOM.hasClass(t,'summaryMenuItem')){
+                DOM.removeClass(DOM.get('#HTMLReporter'),'showDetails');
+            } else if (DOM.hasClass(t,'detailsMenuItem'))  {
+                DOM.addClass(DOM.get('#HTMLReporter'),'showDetails');
+            }
+        });
+
+         DOM.get('.resultPage').innerHTML = html;
+         var summaryHead = DOM.get('.symbolSummary');
+        if(DOM.query('.failed',summaryHead).length>0){
+            DOM.addClass(DOM.get('#HTMLReporter'),'showDetails');
+        }*/
+
+    }
+
+    function handleJSONResult(jsonStr){
+        var jsonObj = JSON.parse(jsonStr);
+        renderHTMLFromJSON(jsonObj);
+    }
+
+    /**
+     * suite
+     * spec
+     * @param jsonOject
+     */
+    function renderHTMLFromJSON(jsonOject){
+       // 1. 首先遍历一遍 确定suites和spec的关系
+       var specs = jsonOject['spies_'];
+        var suites = [];
+
+
+        var specsFailedCount = 0;
+        for(var i= 0,len = specs.length;i<len;++i){
+            var key = specs[i]['suite'].id;
+          if(!suites[key]){
+              suites[key] = {};
+              suites[key].id = key;
+              suites[key].description =specs[i]['suite'].description;
+              suites[key].finished =specs[i]['suite'].finished;
+              suites[key].specs = [];
+          }
+
+            delete specs[i].suite;
+            suites[key].specs.push(specs[i]);
+
+
+           if(specs[i]['results_'][0].failedCount){
+               specsFailedCount++;
+               specs[i].failed = true;
+           }
+
+        }
+        var resultJSON = {'totalSpecs':len,'failedSpecs':specsFailedCount,'suites':suites};
+        console.log(resultJSON);
+        KISSY.use('template',function(S,Template){
+            var template =
+                   '<div class="title {{#if failedSpecs !== 0}}fail-alert{{#else}}passed-alert{{/if}}"><span>用例总数:{{totalSpecs}} | 失败用例总数:{{failedSpecs}}</span></div>' +
+                    '<div class="detail">{{#each suites as suite}}' +
+                    '<div class="suite">' +
+                    '<span class="suite-title">{{suite.description}}</span>' +
+                    '{{#each suite.specs as spec}}' +
+                        '<div class="spec {{#if spec.failed == true}}failed{{#else}}passed{{/if}}">' +
+                            '<a class="spec-title" href="#">{{spec.description}}</a>' +
+                              '<div class="detail">' +
+                               '{{#each spec.results_ as result}}' +
+                                    '{{#each result.items_ as item}}' +
+                                        '<p>' +
+                                            'expect {{item.actual}} {{item.matcherName}} ' +
+                                            '{{#if item.expected !== ""}}{{item.expected}}{{/if}}' +
+                                            '{{#if item.passed_ == true}}' +
+                                                '\t: {{item.message}}{{#else}}\t: Failed.' +
+                                                '<div class="error-stack">{{item.trace.stack}}</div>' +
+                                            '{{/if}}' +
+                                        '</p>' +
+                                    '{{/each}}'+
+                               '{{/each}}' +
+                           '</div>' +
+                        '</div>' +
+                    '{{/each}}' +
+                    '</div>' +
+                    '{{/each}}' +
+                   '</div>';
+
+            DOM.get('.J_TestReporter').innerHTML = Template(template).render(resultJSON);
+
+        });
+
+
+/*
+
+        var tpl = document.getElementById('tpl').innerHTML;
+        DOM.get('#testReporter').innerHTML = juicer(tpl, resultJSON);*/
+
+
+
+    }
+    window.frames['testFrame'].document.location = 'testFrame.html?t='+ (new Date()).getMilliseconds();
 </script>
 </body>
 </html>
